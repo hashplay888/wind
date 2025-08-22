@@ -54,14 +54,14 @@ class _WebViewPageState extends ConsumerState<WebViewPage> {
     await Future.delayed(const Duration(milliseconds: 500    ));
     
     // 启动代理状态监控
-    _startProxyMonito    ring();
+    _startProxyMonitoring();
     
     // 然后初始化WebView
-    _initializeWeb  View();
+    _initializeWebView();
   }
   
   Timer? _proxyMonitorTimer;
-  int _lastK  nownPort = 0;
+  int _lastKnownPort = 0;
   
   void _startProxyMonitoring() {
     _proxyMonitorTimer?.cancel();
@@ -71,7 +71,7 @@ class _WebViewPageState extends ConsumerState<WebViewPage> {
         final isVpnConnected = await _checkVpnStatus();
         if (!isVpnConnected) {
           debugPrint('VPN未连接，暂停代理监控');
-          re        turn;
+          return;
         }
         
         final currentPort = await _getVpnProxyPort();
@@ -81,7 +81,7 @@ class _WebViewPageState extends ConsumerState<WebViewPage> {
           await _configureProxy();
         }
       } catch (e) {
-        debugPrint('代理监控检查失败: $e  ');
+        debugPrint('代理监控检查失败: $e');
       }
     });
   }
@@ -133,13 +133,7 @@ class _WebViewPageState extends ConsumerState<WebViewPage> {
       );
     
     _configureProxy();
-    _controller.loadReque
-
-
-
-
-
-st(Uri.parse(widget.url));
+    _controller.loadRequest(Uri.parse(widget.url));
   }
 
 
@@ -160,24 +154,24 @@ st(Uri.parse(widget.url));
   Future<void> _configureProxy() async {
     try {
       // 获取VPN服务实际使用的代理端口
-      final       proxyPort = await _getVpnProxyPort();
+      final proxyPort = await _getVpnProxyPort();
       
       // 方法1: 设置全局WebView代理
       const platform = MethodChannel('com.hiddify.app/vpn');
       final result = await platform.invokeMethod('setWebViewProxy', {
-        'host': '127.0      .0.1',
+        'host': '127.0.0.1',
         'port': proxyPort,
       });
       
       // 方法2: 设置自定义WebViewClient进行网络拦截
       const webviewPlatform = MethodChannel('com.hiddify.app/webview_proxy');
       await webviewPlatform.invokeMethod('setProxy', {
-        'host':       '127.0.0.1',
+        'host': '127.0.0.1',
         'port': proxyPort,
       });
       
       // 方法3: 创建代理WebViewClient
-      await we      bviewPlatform.invokeMethod('createProxyWebViewClient');
+      await webviewPlatform.invokeMethod('createProxyWebViewClient');
       
       if (kDebugMode) {
         debugPrint('WebView proxy configuration completed: $result');
@@ -204,9 +198,9 @@ st(Uri.parse(widget.url));
 
   Future<void> _setupNetworkInterception() async {
     try {
-      con      st platform = MethodChannel('com.hiddify.app/webview_proxy');
+      const platform = MethodChannel('com.hiddify.app/webview_proxy');
       
-      fina      l result = await platform.invokeMethod('createProxyWebViewClient');
+      final result = await platform.invokeMethod('createProxyWebViewClient');
       
       if (kDebugMode) {
         debugPrint('Proxy WebViewClient setup result: $result');
@@ -295,17 +289,17 @@ st(Uri.parse(widget.url));
               if (_isWindows)
                 IconButton(
                   icon: const Icon(Icons.open_in_browser),
-                  on  Pressed: () => _openInExtern  alBrowser(),
+                  onPressed: () => _openInExternalBrowser(),
                 ),
-                Icon  Button(
-            icon: const Ic  on(Irrow_back),
-                  onPressed: () {
-                      if (_controller.canGo  Back()) {
-                        _controller.goBack();
-                    }   else {
-                        Naviga  tor.of(context)  .pop();
-                      }
-                  },
+                IconButton(
+                   icon: const Icon(Icons.arrow_back),
+                   onPressed: () async {
+                     if (await _controller.canGoBack()) {
+                       _controller.goBack();
+                     } else {
+                       Navigator.of(context).pop();
+                     }
+                   },
                 ),
               ],
             ),
@@ -387,8 +381,7 @@ st(Uri.parse(widget.url));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('无法打开链接: ${widget.url}')
-
+            content: Text('无法打开链接: ${widget.url}'),
             backgroundColor: Colors.red,
           ),
         );
